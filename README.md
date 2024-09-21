@@ -2,7 +2,7 @@
 
 Quick Pyo3 bindings for the rust crate [instant-glicko2](https://github.com/gpluscb/instant-glicko-2). Instant-glicko2 is essentially a performant, rust implementation of Glicko-2 with a fix for the 'rating period' issue. It adds support for frational rating periods, so that ratings can be updated directly after every game. 
 
-Note: Do not use this in production. It has not been extensively tested and there are 0 guarantees about its memory safety or 
+Note: Do not use this in production. It has not been extensively tested and there are 0 guarantees about its memory safety or other behaviour
 
 ## 📚 Table of Contents
 
