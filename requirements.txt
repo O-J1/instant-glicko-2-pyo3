@@ -1,0 +1,9 @@
+colorama==0.4.6
+exceptiongroup==1.2.2
+iniconfig==2.0.0
+-e git+https://github.com/gpluscb/instant-glicko-2@1eebbeead633f37971075a155efcc2c2682a4990#egg=instant_glicko_2
+packaging==24.1
+pluggy==1.5.0
+pytest==8.3.3
+tomli==2.0.1
+maturin

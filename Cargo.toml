@@ -8,7 +8,7 @@ license = "MIT"
 keywords = ["glicko-2", "glicko", "rating", "elo"]
 categories = ["game-development", "mathematics"]
 description = "Implementation of the Glicko-2 rating system that allows for instant feedback after games, not just once a rating period closes"
-rust-version = "1.58.1"
+rust-version = "1.63"
 
 [package.metadata]
 msrv = "1.58.1"
@@ -20,3 +20,17 @@ docs.rs.features = ["serde"]
 version = "1.0"
 optional = true
 features = ["derive"]
+
+[dependencies]
+pyo3 = { version = "0.20.3", features = ["extension-module",  "auto-initialize", "abi3-py310", "chrono"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+
+[lib]
+name = "instant_glicko2"
+crate-type = ["cdylib"]
+
+[dev-dependencies]
+maturin = "1.5.1"
+
+[package.metadata.maturin]
+name = "instant_glicko2"

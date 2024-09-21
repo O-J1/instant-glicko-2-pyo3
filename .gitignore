@@ -4,3 +4,4 @@ Cargo.lock
 /.vscode
 venv/
 target/
+.pytest_cache/
