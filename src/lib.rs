@@ -122,6 +122,8 @@ pub mod algorithm;
 pub mod constants;
 pub mod engine;
 pub mod util;
+mod python_bindings;
+use pyo3::prelude::*;
 
 /// Marker type for the public scale of Glicko-2 ratings. See [`RatingScale`].
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
@@ -281,6 +283,7 @@ impl<Scale: RatingScale> Rating<Scale> {
 /// The settings used by the Glicko-2 algorithm.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[pyclass]
 pub struct GlickoSettings {
     start_rating: PublicRating,
     volatility_change: f64,
@@ -412,4 +415,10 @@ impl Default for GlickoSettings {
             constants::DEFAULT_RATING_PERIOD_DURATION,
         )
     }
+}
+
+/// Allows pyo3 to detect rust
+#[pymodule]
+fn instant_glicko2(py: Python, m: &PyModule) -> PyResult<()> {
+    python_bindings::instant_glicko2(py, m)
 }

@@ -8,6 +8,7 @@ use crate::{
     ConvertToScale, FromWithSettings, GlickoSettings, Internal, IntoWithSettings, Public, Rating,
     RatingScale,
 };
+use pyo3::prelude::*;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,8 @@ use serde::{Deserialize, Serialize};
 /// An opaque index pointing to a player.
 /// This is handed out by [`RatingEngine`].
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct PlayerHandle(usize);
+#[pyclass]
+pub struct PlayerHandle(pub usize);
 
 /// A player as managed by [`RatingEngine`].
 #[derive(Clone, PartialEq, Debug)]
@@ -168,6 +170,7 @@ impl MatchResult {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[pyclass]
 pub struct RatingEngine {
     last_rating_period_start: SystemTime,
     // This should be a PushOnlyVec because we hand out index references.

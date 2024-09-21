@@ -1,95 +1,205 @@
-# Instant Glicko-2
+# instant-glicko2-pyo3
 
-This crate provides an implementation of the [Glicko-2](https://www.glicko.net/glicko/glicko2.pdf) rating system.
-Due to the concept of rating periods, Glicko-2 has the problem that rankings cannot easily be updated instantly after a match concludes.
+Quick Pyo3 bindings for the rust crate [instant-glicko2](https://github.com/gpluscb/instant-glicko-2). Instant-glicko2 is essentially a performant, rust implementation of Glicko-2 with a fix for the 'rating period' issue. It adds support for frational rating periods, so that ratings can be updated directly after every game. 
 
-This implementation aims to solve that problem by allowing fractional rating periods, so that ratings can be updated directly after every game, and not just once a rating period closes.
-This draws inspiration from the [rating system implementation](https://github.com/lichess-org/lila/tree/master/modules/rating/src/main/glicko2) for open-source chess website [Lichess](https://lichess.org),
-as well as two blogpost ([1](https://blog.hypersect.com/the-online-skill-ranking-of-inversus-deluxe/), [2](https://blog.hypersect.com/additional-thoughts-on-skill-ratings/)) by Ryan Juckett on skill ratings for [INVERSUS Deluxe](https://www.inversusgame.com/).
+Note: Do not use this in production. It has not been extensively tested and there are 0 guarantees about its memory safety or 
 
-For more on the implementation, I wrote something [here](https://gist.github.com/gpluscb/302d6b71a8d0fe9f4350d45bc828f802).
+## 📚 Table of Contents
 
-Documentation for the crate can be found on [Docs.rs](https://docs.rs/instant-glicko-2/latest/instant_glicko_2/).
 
-To use this as a dependency, add the following line to your `Cargo.toml` dependencies:
-```toml
-instant-glicko-2 = "0.2.0"
+## 🌟 Features
+
+- Instant-Glicko2 python bindings
+- Pythonic API
+- Higher performance than existing python implementations
+- Courtesy of upstream library, fractional rating updates
+
+
+🛠 Installation
+
+Ensure you have Python 3.10 or later installed or configure the .Toml to use an AIB targeting your version.
+
+
+```bash
+git clone https://github.com/yourusername/instant-glicko2-pyo3.git
+cd to repo
+pip install maturin pyo3
+maturin build
+pip install .
 ```
 
-# Examples
+🚀 Quick Start
 
-```rust
-use instant_glicko_2::{GlickoSettings, PublicRating, IntoWithSettings};
-use instant_glicko_2::algorithm::{self, PublicGame};
+Here's a simple example to get you started with instant-glicko2:
 
-let settings = GlickoSettings::default().with_volatility_change(0.5);
+```python
+from instant_glicko2 import PyGlickoSettings, PyRatingEngine, PyRating, PyMatchResult
 
-// Create our player's rating
-let mut player = PublicRating::new(1500.0, 200.0, 0.06);
+# Initialize Glicko-2 settings
+settings = PyGlickoSettings(
+    start_rating=PyRating(rating=1500.0, deviation=200.0, volatility=0.06),
+    volatility_change=0.5,
+    convergence_tolerance=0.0001,
+    rating_period_duration=604800.0  # 1 week in seconds
+)
 
-// Create our opponents
-// Their volatility is not specified in the paper and it doesn't matter in the calculation,
-// so we're just using the default starting volatility.
-let opponent_a = PublicRating::new(1400.0, 30.0, settings.start_rating().volatility());
-let opponent_b = PublicRating::new(1550.0, 100.0, settings.start_rating().volatility());
-let opponent_c = PublicRating::new(1700.0, 300.0, settings.start_rating().volatility());
+# Create a RatingEngine instance
+engine = PyRatingEngine(settings)
 
-// Create match results for our player
-let results = [
-    // Wins first game (score 1.0)
-    PublicGame::new(opponent_a, 1.0).into_with_settings(settings),
-    // Loses second game (score 0.0)
-    PublicGame::new(opponent_b, 0.0).into_with_settings(settings),
-    // Loses third game (score 0.0)
-    PublicGame::new(opponent_c, 0.0).into_with_settings(settings),
-];
+# Register two players (e.g., images)
+player1, _ = engine.register_player(PyRating(rating=1500.0, deviation=200.0, volatility=0.06))
+player2, _ = engine.register_player(PyRating(rating=1500.0, deviation=200.0, volatility=0.06))
 
-// Update rating after rating period
-let new_rating: PublicRating = algorithm::rate_games_untimed(player.into_with_settings(settings), &results, 1.0, settings).into_with_settings(settings);
+# Player 1 wins against Player 2
+result = PyMatchResult.win()
+engine.register_result(player1, player2, result)
 
-// The rating after the rating period are very close to the results from the paper
-assert!((new_rating.rating() - 1464.06).abs() < 0.01);
-assert!((new_rating.deviation() - 151.52).abs() < 0.01);
-assert!((new_rating.volatility() - 0.05999).abs() < 0.0001);
+# Retrieve updated ratings
+rating1, _ = engine.player_rating(player1)
+rating2, _ = engine.player_rating(player2)
+
+print(f"Player 1 Rating: {rating1.rating}, RD: {rating1.deviation}")
+print(f"Player 2 Rating: {rating2.rating}, RD: {rating2.deviation}")
 ```
-Different example using `RatingEngine`:
-```rust
-use std::time::Duration;
-use instant_glicko_2::{GlickoSettings, PublicRating};
-use instant_glicko_2::engine::{MatchResult, RatingEngine};
 
-let settings = GlickoSettings::default();
+Output:
 
-// Create a RatingEngine with a one day rating period duration
-// The first rating period starts instantly
-let mut engine = RatingEngine::start_new(GlickoSettings::default());
+```yaml
 
-// Register two players
-// The first player is relatively strong
-let player_1_rating_old = PublicRating::new(1700.0, 300.0, 0.06);
-let player_1 = engine.register_player(player_1_rating_old).0;
-
-// The second player hasn't played any games
-let player_2_rating_old = settings.start_rating();
-let player_2 = engine.register_player(player_2_rating_old).0;
-
-// They play and player_2 wins
-engine.register_result(
-    player_1,
-    player_2,
-    &MatchResult::Loss,
-);
-
-// Print the new ratings
-// Type signatures are needed because we could also work with the internal InternalRating
-// That skips one step of calculation,
-// but the rating values are not as pretty and not comparable to the original Glicko ratings
-let player_1_rating_new: PublicRating = engine.player_rating(player_1).0;
-println!("Player 1 old rating: {player_1_rating_old:?}, new rating: {player_1_rating_new:?}");
-let player_2_rating_new: PublicRating = engine.player_rating(player_2).0;
-println!("Player 2 old rating: {player_2_rating_old:?}, new rating: {player_2_rating_new:?}");
-
-// Loser's rating goes down, winner's rating goes up
-assert!(player_1_rating_old.rating() > player_1_rating_new.rating());
-assert!(player_2_rating_old.rating() < player_2_rating_new.rating());
+Player 1 Rating: 1516.083..., RD: 189.837...
+Player 2 Rating: 1483.916..., RD: 189.837...
 ```
+
+## 📝 API Reference
+
+
+### 🏷️ PyGlickoSettings
+
+#### Description:
+
+Configuration settings for the Glicko-2 rating system.
+
+#### Attributes:
+
+- `start_rating` (`PyRating`): The initial rating, RD, and volatility for new players.
+- `volatility_change` (`float`): The rate at which volatility changes over time.
+- `convergence_tolerance` (`float`): The tolerance for the convergence of the volatility parameter.
+- `rating_period_duration` (`float`): Duration of a rating period in seconds.
+
+#### Example:
+
+```python
+from instant_glicko2 import PyGlickoSettings, PyRating
+
+settings = PyGlickoSettings(
+    start_rating=PyRating(rating=1500.0, deviation=200.0, volatility=0.06),
+    volatility_change=0.5,
+    convergence_tolerance=0.0001,
+    rating_period_duration=604800.0  # 1 week in seconds
+)
+```
+
+### ⚙️ PyRatingEngine
+
+#### Description:
+Core engine managing player ratings, match results, and rating periods.
+
+#### Methods:
+
+- `register_player(rating: PyRating) -> Tuple[PyPlayerHandle, int]`: Registers a new player with the given rating.
+- `register_result(winner: PyPlayerHandle, loser: PyPlayerHandle, result: PyMatchResult) -> None`: Records the outcome of a match between two players.
+- `player_rating(player: PyPlayerHandle) -> Tuple[PyRating, int]`: Retrieves the current rating and closed periods for a player.
+- `maybe_close_rating_periods() -> None`: Advances the engine to close rating periods based on the configured duration.
+
+#### Example:
+```python
+
+from instant_glicko2 import PyRatingEngine, PyGlickoSettings, PyRating
+
+# Initialize settings
+settings = PyGlickoSettings(...)
+engine = PyRatingEngine(settings)
+
+# Register players
+player1, _ = engine.register_player(PyRating(...))
+player2, _ = engine.register_player(PyRating(...))
+
+# Register a match result
+engine.register_result(player1, player2, PyMatchResult.win())
+
+# Retrieve player ratings
+rating1, closed1 = engine.player_rating(player1)
+rating2, closed2 = engine.player_rating(player2)
+```
+
+### 🧑‍🤝‍🧑 PyPlayerHandle
+
+#### Description:
+
+A handle representing a registered player within the PyRatingEngine. Use this handle to reference players in match results and rating queries.
+
+#### Attributes:
+
+`index` (`int`): Unique identifier for the player within the engine.
+
+#### Example:
+
+```python
+print(f"Player 1 ID: {player1.index}")
+```
+
+### 📊 PyRating
+
+#### Description:
+Represents a player's rating, including their skill rating, rating deviation (RD), and volatility.
+
+#### Attributes:
+
+- rating (float): The player's skill rating.
+- deviation (float): The uncertainty in the player's rating.
+- volatility (float): The degree of expected fluctuation in the player's rating.
+
+#### Example:
+
+```python
+from instant_glicko2 import PyRating
+
+initial_rating = PyRating(rating=1500.0, deviation=200.0, volatility=0.06)
+print(initial_rating)
+```
+
+#### Output:
+
+```python
+PyRating(rating=1500.0, deviation=200.0, volatility=0.06)
+```
+
+### 🏁 PyMatchResult
+
+### Description:
+Represents the outcome of a match between two players. It can be a win, loss, or draw.
+
+#### Class Methods:
+
+    PyMatchResult.win() -> PyMatchResult: Creates a match result indicating a win for the first player.
+    PyMatchResult.draw() -> PyMatchResult: Creates a match result indicating a draw between players.
+
+#### Example:
+
+```python
+
+from instant_glicko2 import PyMatchResult
+
+# Player 1 wins
+win_result = PyMatchResult.win()
+
+# Players draw
+draw_result = PyMatchResult.draw()
+```
+
+## License 
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+#python #glicko2 #rating #django #webapp #gaming #image-ranking #pyO3 #documentation
+
+
