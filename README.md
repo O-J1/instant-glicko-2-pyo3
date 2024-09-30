@@ -9,9 +9,8 @@ Note: Do not use this in production. It has not been extensively tested and ther
 
 ## 🌟 Features
 
-- Instant-Glicko2 python bindings
-- Pythonic API
-- Higher performance than existing python implementations
+- Instant-Glicko2 python bindings, with attempts at being Pythonic
+- From brief testing higher performance than python impls of Glicko2
 - Courtesy of upstream library, fractional rating updates
 
 
