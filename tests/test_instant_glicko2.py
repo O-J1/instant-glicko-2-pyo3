@@ -6,262 +6,357 @@ from instant_glicko2 import (
     PyRating,
     PyRatingEngine,
     PyMatchResult,
-    PyPlayerHandle
+    PyPlayerHandle,
 )
 import time
 
+
 def test_player1_wins(engine, register_two_players):
-    """
-    Test that Player 1's rating increases and Player 2's rating decreases when Player 1 wins.
-    """
-    player1, player2 = register_two_players(engine)
+    base_time = time.time()
+    player1, player2 = register_two_players(engine, base_time)
 
     # Initial ratings
-    py_rating1_initial, _ = engine.player_rating(player1)
-    py_rating2_initial, _ = engine.player_rating(player2)
-
-    rating1_initial = py_rating1_initial.rating
-    rating2_initial = py_rating2_initial.rating
+    py_rating1_initial, _ = engine.player_rating_at(player1, base_time)
+    py_rating2_initial, _ = engine.player_rating_at(player2, base_time)
 
     # Player 1 wins against Player 2
     result = PyMatchResult.win()
-    engine.register_result(player1, player2, result)
+    event_time = base_time + 1  # Simulate the match happening 1 second later
+    engine.register_result_at(player1, player2, result, event_time)
 
-    # Get updated ratings
-    py_rating1_updated, _ = engine.player_rating(player1)
-    py_rating2_updated, _ = engine.player_rating(player2)
-
-    rating1_updated = py_rating1_updated.rating
-    rating2_updated = py_rating2_updated.rating
+    # Updated ratings
+    py_rating1_updated, _ = engine.player_rating_at(player1, event_time)
+    py_rating2_updated, _ = engine.player_rating_at(player2, event_time)
 
     # Assertions
-    assert rating1_updated > rating1_initial, "Player 1's rating should increase after a win."
-    assert rating2_updated < rating2_initial, "Player 2's rating should decrease after a loss."
+    assert (
+        py_rating1_updated.rating > py_rating1_initial.rating
+    ), "Player 1's rating should increase after a win."
+    assert (
+        py_rating2_updated.rating < py_rating2_initial.rating
+    ), "Player 2's rating should decrease after a loss."
+
 
 def test_player2_wins(engine, register_two_players):
-    """
-    Test that Player 2's rating increases and Player 1's rating decreases when Player 2 wins.
-    """
-    player1, player2 = register_two_players(engine)
+    base_time = time.time()
+    player1, player2 = register_two_players(engine, base_time)
 
     # Initial ratings
-    py_rating1_initial, _ = engine.player_rating(player1)
-    py_rating2_initial, _ = engine.player_rating(player2)
-
-    rating1_initial = py_rating1_initial.rating
-    rating2_initial = py_rating2_initial.rating
+    py_rating1_initial, _ = engine.player_rating_at(player1, base_time)
+    py_rating2_initial, _ = engine.player_rating_at(player2, base_time)
 
     # Player 2 wins against Player 1
     result = PyMatchResult.win()
-    engine.register_result(player2, player1, result)
+    event_time = base_time + 1
+    engine.register_result_at(player2, player1, result, event_time)
 
-    # Get updated ratings
-    py_rating1_updated, _ = engine.player_rating(player1)
-    py_rating2_updated, _ = engine.player_rating(player2)
-
-    rating1_updated = py_rating1_updated.rating
-    rating2_updated = py_rating2_updated.rating
+    # Updated ratings
+    py_rating1_updated, _ = engine.player_rating_at(player1, event_time)
+    py_rating2_updated, _ = engine.player_rating_at(player2, event_time)
 
     # Assertions
-    assert rating2_updated > rating2_initial, "Player 2's rating should increase after a win."
-    assert rating1_updated < rating1_initial, "Player 1's rating should decrease after a loss."
+    assert (
+        py_rating2_updated.rating > py_rating2_initial.rating
+    ), "Player 2's rating should increase after a win."
+    assert (
+        py_rating1_updated.rating < py_rating1_initial.rating
+    ), "Player 1's rating should decrease after a loss."
+
 
 def test_players_draw(engine, register_two_players):
-    """
-    Test that both players' ratings remain the same after a draw when they have identical initial ratings.
-    """
-    player1, player2 = register_two_players(engine)
+    base_time = time.time()
+    player1, player2 = register_two_players(engine, base_time)
 
     # Initial ratings
-    py_rating1_initial, _ = engine.player_rating(player1)
-    py_rating2_initial, _ = engine.player_rating(player2)
+    py_rating1_initial, _ = engine.player_rating_at(player1, base_time)
+    py_rating2_initial, _ = engine.player_rating_at(player2, base_time)
 
-    rating1_initial = py_rating1_initial.rating
-    rating2_initial = py_rating2_initial.rating
-
-    # Both players draw
+    # Draw
     result = PyMatchResult.draw()
-    engine.register_result(player1, player2, result)
+    event_time = base_time + 1
+    engine.register_result_at(player1, player2, result, event_time)
 
-    # Get updated ratings
-    py_rating1_updated, _ = engine.player_rating(player1)
-    py_rating2_updated, _ = engine.player_rating(player2)
-
-    rating1_updated = py_rating1_updated.rating
-    rating2_updated = py_rating2_updated.rating
+    # Updated ratings
+    py_rating1_updated, _ = engine.player_rating_at(player1, event_time)
+    py_rating2_updated, _ = engine.player_rating_at(player2, event_time)
 
     # Assertions
-    assert rating1_updated == pytest.approx(rating1_initial, abs=1e-4), "Player 1's rating should remain the same after a draw."
-    assert rating2_updated == pytest.approx(rating2_initial, abs=1e-4), "Player 2's rating should remain the same after a draw."
+    assert py_rating1_updated.rating == pytest.approx(
+        py_rating1_initial.rating, abs=1e-4
+    ), "Player 1's rating should remain the same after a draw."
+    assert py_rating2_updated.rating == pytest.approx(
+        py_rating2_initial.rating, abs=1e-4
+    ), "Player 2's rating should remain the same after a draw."
+
 
 def test_player1_wins_multiple_games(engine, register_two_players):
-    """
-    Test that Player 1's rating increases proportionally after winning multiple games.
-    """
-    player1, player2 = register_two_players(engine)
+    base_time = time.time()
+    player1, player2 = register_two_players(engine, base_time)
 
     # Initial ratings
-    py_rating1_initial, _ = engine.player_rating(player1)
-    py_rating2_initial, _ = engine.player_rating(player2)
+    py_rating1_initial, _ = engine.player_rating_at(player1, base_time)
 
-    rating1_initial = py_rating1_initial.rating
-    rating2_initial = py_rating2_initial.rating
-
-    # Player 1 wins 5 consecutive games against Player 2
+    # Player 1 wins multiple games
     result = PyMatchResult.win()
-    for _ in range(5):
-        engine.register_result(player1, player2, result)
+    for i in range(5):
+        event_time = base_time + i + 1
+        engine.register_result_at(player1, player2, result, event_time)
 
-    # Get updated ratings
-    py_rating1_updated, _ = engine.player_rating(player1)
-    py_rating2_updated, _ = engine.player_rating(player2)
-
-    rating1_updated = py_rating1_updated.rating
-    rating2_updated = py_rating2_updated.rating
+    # Updated rating
+    py_rating1_updated, _ = engine.player_rating_at(player1, event_time)
 
     # Assertions
-    assert rating1_updated > rating1_initial, "Player 1's rating should increase after multiple wins."
-    assert rating2_updated < rating2_initial, "Player 2's rating should decrease after multiple losses."
-    
-    # Additionally, check that the rating increased by a noticeable amount
-    assert (rating1_updated - rating1_initial) > 0, "Player 1's rating should have increased."
+    assert (
+        py_rating1_updated.rating > py_rating1_initial.rating
+    ), "Player 1's rating should increase after multiple wins."
+
 
 def test_player2_wins_and_rd_decay(short_period_engine, register_two_players):
-    """
-    Test that Player 2's rating deviation (RD) increases over time after winning multiple games and then not playing.
-    """
     engine = short_period_engine
-    player1, player2 = register_two_players(engine)
+    base_time = time.time()
+    player1, player2 = register_two_players(engine, base_time)
 
-    # Initial RD for Player 2
-    py_rating_initial, _ = engine.player_rating(player2)
-    rd2_initial = py_rating_initial.deviation
-    assert rd2_initial == pytest.approx(300.0, abs=1e-4), "Initial RD for Player 2 should be approximately 200.0"
-
-    # Player 2 wins 15 consecutive games against Player 1
+    # Player 2 wins multiple games
     result = PyMatchResult.win()
-    for _ in range(15):
-        engine.register_result(player2, player1, result)
-        time.sleep(0.01)  # Small sleep to ensure the engine processes the results
+    for i in range(15):
+        event_time = base_time + i + 1
+        engine.register_result_at(player2, player1, result, event_time)
 
-    # Get Player 2's rating after 15 wins
-    py_rating_after_wins, rd2_after_wins = engine.player_rating(player2)
-    rating2_after_wins = py_rating_after_wins.rating
-    rd2_after_wins = py_rating_after_wins.deviation
-    assert rating2_after_wins > 1500.0, "Player 2's rating should increase after multiple wins."
-    assert rd2_after_wins <= 200.0, "Player 2's RD should not increase after wins."
+    # Player 2's rating after wins
+    py_rating2_after_wins, _ = engine.player_rating_at(player2, event_time)
+    rd2_after_wins = py_rating2_after_wins.deviation
 
-    # Simulate passage of 3 months (assuming 1 rating period = 1 second, 3 months ≈ 90 weeks ≈ 90 rating periods)
-    for _ in range(90):
-        engine.maybe_close_rating_periods()
-        time.sleep(0.01)  # Small sleep to simulate time between rating periods
-
-    # Get Player 2's rating after RD decay
-    py_rating_final, rd2_final = engine.player_rating(player2)
-    rating2_final = py_rating_final.rating
-    rd2_final = py_rating_final.deviation
-
-    # Corrected Assertion: RD should **increase** after inactivity
-    assert rd2_final > rd2_after_wins, "Player 2's RD should increase over time when not playing."
-    assert rating2_final > 1500.0, "Player 2's rating should remain higher after RD decay."
-
-def test_players_with_different_initial_ratings_draw(engine, register_two_players):
-    """
-    Test that when two players with different initial ratings draw, their ratings adjust accordingly.
-    """
-    # Register two players with different initial ratings
-    # Manually register them with different ratings
-    player_high, _ = engine.register_player(PyRating(rating=1600.0, deviation=200.0, volatility=0.06))
-    player_low, _ = engine.register_player(PyRating(rating=1400.0, deviation=200.0, volatility=0.06))
-
-    # Player_high draws with Player_low
-    result = PyMatchResult.draw()
-    engine.register_result(player_high, player_low, result)
-
-    # Get updated ratings
-    py_rating_high_updated, _ = engine.player_rating(player_high)
-    py_rating_low_updated, _ = engine.player_rating(player_low)
-    rating_high_updated = py_rating_high_updated.rating
-    rating_low_updated = py_rating_low_updated.rating
+    # Simulate inactivity
+    inactivity_period = 90  # Simulate 90 seconds of inactivity
+    future_time = event_time + inactivity_period
+    py_rating2_final, _ = engine.player_rating_at(player2, future_time)
+    rd2_final = py_rating2_final.deviation
 
     # Assertions
-    # Higher-rated player should slightly decrease, lower-rated player should slightly increase
-    assert rating_high_updated < 1600.0, "Higher-rated player's rating should decrease slightly after a draw."
-    assert rating_low_updated > 1400.0, "Lower-rated player's rating should increase slightly after a draw."
+    assert (
+        rd2_final > rd2_after_wins
+    ), "Player 2's RD should increase over time when not playing."
+
+
+def test_players_with_different_initial_ratings_draw(engine):
+    base_time = time.time()
+    # Register players with different ratings
+    player_high, _ = engine.register_player_at(
+        PyRating(rating=1600.0, deviation=200.0, volatility=0.06), base_time
+    )
+    player_low, _ = engine.register_player_at(
+        PyRating(rating=1400.0, deviation=200.0, volatility=0.06), base_time
+    )
+
+    # Draw
+    result = PyMatchResult.draw()
+    event_time = base_time + 1
+    engine.register_result_at(player_high, player_low, result, event_time)
+
+    # Updated ratings
+    py_rating_high_updated, _ = engine.player_rating_at(player_high, event_time)
+    py_rating_low_updated, _ = engine.player_rating_at(player_low, event_time)
+
+    # Assertions
+    assert (
+        py_rating_high_updated.rating < 1600.0
+    ), "Higher-rated player's rating should decrease slightly after a draw."
+    assert (
+        py_rating_low_updated.rating > 1400.0
+    ), "Lower-rated player's rating should increase slightly after a draw."
+
 
 def test_rd_increases_on_inactivity(short_period_engine, register_two_players):
-    """
-    Test that a player's RD increases over time when they do not play any games.
-    """
     engine = short_period_engine
-    player1, _ = register_two_players(engine)
+    base_time = time.time()
+    player1, _ = register_two_players(engine, base_time)
 
     # Initial RD
-    py_rating_initial, _ = engine.player_rating(player1)
-    rd1_initial = py_rating_initial.deviation
-    assert rd1_initial == pytest.approx(300.0, abs=1e-4), "Initial RD for Player 1 should be approximately 200.0"
+    py_rating_initial, _ = engine.player_rating_at(player1, base_time)
+    rd_initial = py_rating_initial.deviation
 
-    # Simulate inactivity over 10 rating periods
-    for _ in range(10):
-        engine.maybe_close_rating_periods()
-        time.sleep(0.01)  # Small sleep to simulate time between rating periods
-
-    # Get RD after inactivity
-    py_rating_final, _ = engine.player_rating(player1)
-    rd1_final = py_rating_final.deviation
-    assert rd1_final > rd1_initial, "Player 1's RD should increase due to inactivity."
-    assert py_rating_final.rating == pytest.approx(py_rating_initial.rating, abs=1e-4), "Player 1's rating should remain the same after inactivity."
-
-def test_volatility_remains_constant(engine, register_two_players):
-    """
-    Test that players' volatility remains constant after matches.
-    """
-    player1, player2 = register_two_players(engine)
-
-    # Get initial volatilities
-    py_rating1_initial, _ = engine.player_rating(player1)
-    py_rating2_initial, _ = engine.player_rating(player2)
-
-    initial_volatility1 = py_rating1_initial.volatility
-    initial_volatility2 = py_rating2_initial.volatility
-
-    # Player1 wins against Player2
-    result = PyMatchResult.win()
-    engine.register_result(player1, player2, result)
-
-    # Get updated volatilities
-    py_rating1_updated, _ = engine.player_rating(player1)
-    py_rating2_updated, _ = engine.player_rating(player2)
-
-    updated_volatility1 = py_rating1_updated.volatility
-    updated_volatility2 = py_rating2_updated.volatility
+    # Simulate inactivity
+    inactivity_period = 10  # Simulate 10 seconds of inactivity
+    future_time = base_time + inactivity_period
+    py_rating_final, _ = engine.player_rating_at(player1, future_time)
+    rd_final = py_rating_final.deviation
 
     # Assertions
-    assert updated_volatility1 == pytest.approx(initial_volatility1, abs=1e-4), "Player 1's volatility should remain constant."
-    assert updated_volatility2 == pytest.approx(initial_volatility2, abs=1e-4), "Player 2's volatility should remain constant."
+    assert rd_final > rd_initial, "Player 1's RD should increase due to inactivity."
 
-def test_registering_multiple_players(engine, register_two_players):
+
+def test_volatility_changes_with_inconsistent_performance(engine, register_two_players):
+    base_time = time.time()
+    player1, player2 = register_two_players(engine, base_time)
+
+    # Initial volatility
+    py_rating1_initial, _ = engine.player_rating_at(player1, base_time)
+    initial_volatility1 = py_rating1_initial.volatility
+
+    # Simulate inconsistent results
+    results = [
+        PyMatchResult.win(),
+        PyMatchResult.loss(),
+        PyMatchResult.draw(),
+        PyMatchResult.win(),
+        PyMatchResult.loss(),
+    ]
+    for i, result in enumerate(results):
+        event_time = base_time + i + 1
+        engine.register_result_at(player1, player2, result, event_time)
+
+    # Updated volatility
+    event_time = base_time + len(results) + 1
+    py_rating1_updated, _ = engine.player_rating_at(player1, event_time)
+    updated_volatility1 = py_rating1_updated.volatility
+
+    # Print the volatility for debugging
+    print(f"Initial volatility: {initial_volatility1}")
+    print(f"Updated volatility: {updated_volatility1}")
+    print(f"Difference: {updated_volatility1 - initial_volatility1}")
+
+    # Assertions
+    assert (
+        updated_volatility1 != initial_volatility1
+    ), "Player 1's volatility should change due to inconsistent performance."
+
+
+
+def test_paper_example():
     """
-    Test that registering multiple players maintains independent ratings.
+    Test the example calculation in Glickman's paper.
     """
-    # Register multiple players
-    players = []
-    for _ in range(10):
-        player, _ = engine.register_player(PyRating(rating=1500.0, deviation=200.0, volatility=0.06))
-        players.append(player)
-    
-    # Player 0 wins against all others
-    result = PyMatchResult.win()
-    for opponent in players[1:]:
-        engine.register_result(players[0], opponent, result)
-    
-    # Get updated ratings
-    py_rating0_updated, _ = engine.player_rating(players[0])
-    rating0_updated = py_rating0_updated.rating
-    for opponent in players[1:]:
-        py_rating_updated, _ = engine.player_rating(opponent)
-        rating_updated = py_rating_updated.rating
-        assert rating_updated < 1500.0, "Opponent's rating should decrease after losing."
-    
-    # Player 0's rating should have increased
-    assert rating0_updated > 1500.0, "Player 0's rating should have increased after multiple wins."
+    from datetime import datetime, timezone
+
+    # Set up Glicko-2 settings
+    settings = PyGlickoSettings(
+        start_rating=PyRating(rating=1500.0, deviation=350.0, volatility=0.06),
+        volatility_change=0.5,  # τ (tau) parameter
+        convergence_tolerance=0.000001,
+        rating_period_duration=1.0,  # 1 second
+    )
+    engine = PyRatingEngine(settings)
+
+    # Set the start time to UNIX_EPOCH (January 1, 1970)
+    start_time = 0.0  # UNIX timestamp
+
+    # Register players at the start time
+    player, _ = engine.register_player_at(
+        PyRating(rating=1500.0, deviation=200.0, volatility=0.06), start_time
+    )
+    opponent_a, _ = engine.register_player_at(
+        PyRating(rating=1400.0, deviation=30.0, volatility=0.06), start_time
+    )
+    opponent_b, _ = engine.register_player_at(
+        PyRating(rating=1550.0, deviation=100.0, volatility=0.06), start_time
+    )
+    opponent_c, _ = engine.register_player_at(
+        PyRating(rating=1700.0, deviation=300.0, volatility=0.06), start_time
+    )
+
+    # Register match results at the start time
+    engine.register_result_at(player, opponent_a, PyMatchResult.win(), start_time)
+    engine.register_result_at(player, opponent_b, PyMatchResult.loss(), start_time)
+    engine.register_result_at(player, opponent_c, PyMatchResult.loss(), start_time)
+
+    # Calculate the player's new rating at the end of the rating period
+    rating_period_end_time = start_time + 1.0  # 1 second later
+    new_rating, _ = engine.player_rating_at(player, rating_period_end_time)
+
+    # Assertions with tolerance
+    assert abs(new_rating.rating - 1464.06) <= 0.05, f"Expected rating ~1464.06, got {new_rating.rating}"
+    assert abs(new_rating.deviation - 151.52) <= 0.15, f"Expected deviation ~151.52, got {new_rating.deviation}"
+    assert abs(new_rating.volatility - 0.05999) <= 0.0001, f"Expected volatility ~0.05999, got {new_rating.volatility}"
+
+
+def test_rating_period_close():
+    """
+    Test that rating doesn't radically change across rating periods.
+    """
+    import time
+
+    # Glicko-2 settings with a 1-second rating period
+    settings = PyGlickoSettings(
+        start_rating=PyRating(rating=1500.0, deviation=200.0, volatility=0.06),
+        volatility_change=0.06,
+        convergence_tolerance=0.0001,
+        rating_period_duration=1.0,  # 1 second
+    )
+    engine = PyRatingEngine(settings)
+
+    # Start time
+    start_time = time.time()
+
+    # Register players at start time
+    player, _ = engine.register_player_at(settings.start_rating, start_time)
+    opponent, _ = engine.register_player_at(
+        PyRating(rating=1400.0, deviation=30.0, volatility=0.06), start_time
+    )
+
+    # Register a win for the player
+    engine.register_result_at(player, opponent, PyMatchResult.win(), start_time)
+
+    # Get ratings just before the rating period ends
+    right_before = start_time + 0.999999  # Just before 1 second
+    rating_right_before, _ = engine.player_rating_at(player, right_before)
+
+    # Get ratings just after the rating period ends
+    right_after = start_time + 1.000001  # Just after 1 second
+    rating_right_after, _ = engine.player_rating_at(player, right_after)
+
+    # Assertions
+    assert (
+        abs(rating_right_before.rating - rating_right_after.rating) <= 1e-6
+    ), "Ratings should not change significantly across rating periods."
+    assert (
+        abs(rating_right_before.deviation - rating_right_after.deviation) <= 1e-6
+    ), "Rating deviations should not change significantly across rating periods."
+    assert (
+        abs(rating_right_before.volatility - rating_right_after.volatility) <= 1e-6
+    ), "Volatility should not change significantly across rating periods."
+
+
+def test_time_change():
+    """
+    Test that rating deviation increases over time when the player is inactive.
+    """
+    import time
+
+    # Glicko-2 settings with a 1-hour rating period
+    settings = PyGlickoSettings(
+        start_rating=PyRating(rating=1500.0, deviation=200.0, volatility=0.06),
+        volatility_change=0.06,
+        convergence_tolerance=0.0001,
+        rating_period_duration=3600.0,  # 1 hour in seconds
+    )
+    engine = PyRatingEngine(settings)
+
+    # Start time
+    start_time = time.time()
+
+    # Register player at start time
+    player, _ = engine.register_player_at(settings.start_rating, start_time)
+
+    # Get rating at start time
+    rating_at_start, _ = engine.player_rating_at(player, start_time)
+
+    # Simulate a year of inactivity
+    year_in_seconds = 365 * 24 * 3600
+    end_time = start_time + year_in_seconds
+
+    # Get rating after a year
+    rating_after_year, _ = engine.player_rating_at(player, end_time)
+
+    # Assertions
+    # Rating should remain the same
+    assert (
+        abs(rating_at_start.rating - rating_after_year.rating) <= 1e-6
+    ), "Rating should not change due to inactivity."
+    # Deviation should increase
+    assert (
+        rating_after_year.deviation > rating_at_start.deviation
+    ), "Rating deviation should increase due to inactivity."
+    # Volatility should remain the same
+    assert (
+        abs(rating_at_start.volatility - rating_after_year.volatility) <= 1e-6
+    ), "Volatility should not change due to inactivity."

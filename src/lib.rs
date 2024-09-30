@@ -416,9 +416,3 @@ impl Default for GlickoSettings {
         )
     }
 }
-
-/// Allows pyo3 to detect rust
-#[pymodule]
-fn instant_glicko2(py: Python, m: &PyModule) -> PyResult<()> {
-    python_bindings::instant_glicko2(py, m)
-}

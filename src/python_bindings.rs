@@ -255,20 +255,16 @@
 
 // src/python_bindings.rs
 
+// src/python_bindings.rs
+
+// src/python_bindings.rs
+
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use crate::engine::{RatingEngine, PlayerHandle, MatchResult};
 use crate::{GlickoSettings, Rating, Public};
-use std::time::Duration;
-
-/// Initializes the Python module by adding all necessary classes.
-pub fn instant_glicko2(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<PyRatingEngine>()?;
-    m.add_class::<PyPlayerHandle>()?;
-    m.add_class::<PyGlickoSettings>()?;
-    m.add_class::<PyMatchResult>()?;
-    m.add_class::<PyRating>()?;
-    Ok(())
-}
 
 #[pyclass]
 struct PyRatingEngine {
@@ -284,23 +280,46 @@ impl PyRatingEngine {
         }
     }
 
-    fn register_player(&mut self, rating: PyRating) -> (PyPlayerHandle, u32) {
-        let (player_handle, closed_periods) = self.engine.register_player(rating.into());
-        (PyPlayerHandle(player_handle), closed_periods)
+    /// Register a new player at a specific timestamp.
+    fn register_player_at(
+        &mut self,
+        rating: PyRating,
+        timestamp: f64,
+    ) -> PyResult<(PyPlayerHandle, u32)> {
+        let system_time = timestamp_to_system_time(timestamp)?;
+        let (player_handle, closed_periods) =
+            self.engine.register_player_at(rating.into(), system_time);
+        Ok((PyPlayerHandle(player_handle), closed_periods))
     }
 
-    fn register_result(
+    /// Register a match result at a specific timestamp.
+    fn register_result_at(
         &mut self,
         player1: PyPlayerHandle,
         player2: PyPlayerHandle,
         score: PyMatchResult,
-    ) -> u32 {
-        self.engine.register_result::<MatchResult>(player1.0, player2.0, &score.into())
+        timestamp: f64,
+    ) -> PyResult<u32> {
+        let system_time = timestamp_to_system_time(timestamp)?;
+        let closed_periods = self.engine.register_result_at::<MatchResult>(
+            player1.0,
+            player2.0,
+            &score.into(),
+            system_time,
+        );
+        Ok(closed_periods)
     }
 
-    fn player_rating(&mut self, player: PyPlayerHandle) -> (PyRating, u32) {
-        let (rating, closed) = self.engine.player_rating::<Public>(player.0);
-        (PyRating::from(rating), closed)
+
+    /// Retrieve a player's rating at a specific timestamp.
+    fn player_rating_at(
+        &mut self,
+        player: PyPlayerHandle,
+        timestamp: f64,
+    ) -> PyResult<(PyRating, u32)> {
+        let system_time = timestamp_to_system_time(timestamp)?;
+        let (rating, closed_periods) = self.engine.player_rating_at::<Public>(player.0, system_time);
+        Ok((PyRating::from(rating), closed_periods))
     }
 
     fn maybe_close_rating_periods(&mut self) -> (f64, u32) {
@@ -312,12 +331,28 @@ impl PyRatingEngine {
     }
 }
 
+fn timestamp_to_system_time(timestamp: f64) -> PyResult<SystemTime> {
+    if timestamp < 0.0 {
+        return Err(PyErr::new::<PyValueError, _>(
+            "Timestamp is before UNIX epoch",
+        ));
+    }
+    let duration = Duration::from_secs_f64(timestamp);
+    Ok(UNIX_EPOCH + duration)
+}
+
+
 #[pyclass]
 #[derive(Clone, Copy)]
 struct PyPlayerHandle(PlayerHandle);
 
 #[pymethods]
 impl PyPlayerHandle {
+    #[new]
+    fn new(index: usize) -> Self {
+        PyPlayerHandle(PlayerHandle(index))
+    }
+
     #[getter]
     fn index(&self) -> usize {
         self.0 .0
@@ -437,6 +472,8 @@ impl PyRating {
     }
 }
 
+
+
 impl From<Rating<Public>> for PyRating {
     fn from(r: Rating<Public>) -> Self {
         PyRating { rating: r }
@@ -453,4 +490,16 @@ impl From<PyMatchResult> for MatchResult {
     fn from(r: PyMatchResult) -> Self {
         r.result
     }
+}
+
+#[pymodule]
+fn instant_glicko2(_py: Python, m: &PyModule) -> PyResult<()> {
+    // Add classes to the module
+    m.add("__doc__", "Instant Glicko-2 rating system bindings for Python")?;
+    m.add_class::<PyRatingEngine>()?;
+    m.add_class::<PyPlayerHandle>()?;
+    m.add_class::<PyGlickoSettings>()?;
+    m.add_class::<PyMatchResult>()?;
+    m.add_class::<PyRating>()?;
+    Ok(())
 }
